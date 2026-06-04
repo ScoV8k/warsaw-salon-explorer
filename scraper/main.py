@@ -17,7 +17,7 @@ SEARCH_KEYWORDS = [
     "salon kosmetyczny",
 ]
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "salons.db")
+DB_PATH = os.path.join(os.path.dirname(__file__), "..", "backend", "salons.db")
 
 
 def process_salons():

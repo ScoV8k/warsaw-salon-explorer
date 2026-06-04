@@ -25,6 +25,8 @@ def init_database(db_path: str) -> sqlite3.Connection:
             top_reviews       TEXT,
             editorial_summary TEXT,
             photos_json       TEXT,
+            lat               REAL,
+            lng               REAL,
             raw_json          TEXT,
             fetched_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
@@ -55,8 +57,8 @@ def upsert_salon(conn: sqlite3.Connection, record: dict):
             google_place_id, name, address, search_district, actual_district,
             phone, website, google_maps_url, rating, reviews_count,
             price_level, primary_type, business_status, opening_hours,
-            services, top_reviews, editorial_summary, photos_json, raw_json
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            services, top_reviews, editorial_summary, photos_json, lat, lng, raw_json
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(google_place_id) DO UPDATE SET
             name = excluded.name,
             address = excluded.address,
@@ -74,6 +76,8 @@ def upsert_salon(conn: sqlite3.Connection, record: dict):
             top_reviews = excluded.top_reviews,
             editorial_summary = excluded.editorial_summary,
             photos_json = excluded.photos_json,
+            lat = excluded.lat,
+            lng = excluded.lng,
             raw_json = excluded.raw_json,
             fetched_at = CURRENT_TIMESTAMP
     """, (
@@ -95,6 +99,8 @@ def upsert_salon(conn: sqlite3.Connection, record: dict):
         json.dumps(record["top_reviews"], ensure_ascii=False),
         record["editorial_summary"],
         json.dumps(record["photos"], ensure_ascii=False),
+        record.get("lat"),
+        record.get("lng"),
         json.dumps(record["raw_json"], ensure_ascii=False),
     ))
 

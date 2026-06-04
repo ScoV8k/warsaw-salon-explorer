@@ -114,6 +114,17 @@ class SalonRepository:
         conn.close()
         return [dict(r) for r in rows]
 
+    def get_all_for_map(self) -> list[dict]:
+        conn = self._connect()
+        rows = conn.execute(
+            """SELECT google_place_id, name, actual_district, rating, reviews_count,
+                      primary_type, lat, lng, photos_json
+               FROM salons
+               WHERE lat IS NOT NULL AND lng IS NOT NULL"""
+        ).fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+
     UPDATABLE_COLUMNS = {
         "name", "address", "actual_district", "phone", "website",
         "google_maps_url", "rating", "reviews_count", "price_level",

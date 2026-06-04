@@ -65,6 +65,7 @@ def build_salon_record(details: dict, search_district: str) -> dict:
     address_components = details.get("addressComponents", [])
     reviews_raw = details.get("reviews", [])
     types = details.get("types", [])
+    location = details.get("location", {})
 
     services_from_types = extract_services_from_types(types)
     services_from_reviews = extract_services_from_reviews(reviews_raw)
@@ -114,6 +115,8 @@ def build_salon_record(details: dict, search_district: str) -> dict:
         "top_reviews": top_reviews,
         "editorial_summary": details.get("editorialSummary", {}).get("text", ""),
         "photos": photos,
+        "lat": location.get("latitude"),
+        "lng": location.get("longitude"),
         "raw_json": details,
     }
 

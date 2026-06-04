@@ -60,6 +60,10 @@ class SalonService:
     def search(self, query: str, limit: int = 20) -> list[dict]:
         return self.repo.search_salons(query, limit)
 
+    def get_map_salons(self) -> list[dict]:
+        rows = self.repo.get_all_for_map()
+        return [self._enrich_salon(r) for r in rows]
+
     def update_salon(self, place_id: str, fields: dict) -> Optional[dict]:
         if not self.repo.find_by_id(place_id):
             return None

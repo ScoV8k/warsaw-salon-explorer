@@ -14,11 +14,11 @@ DETAIL_FIELD_MASK = (
     "rating,userRatingCount,websiteUri,regularOpeningHours,"
     "reviews,primaryType,internationalPhoneNumber,"
     "priceLevel,businessStatus,editorialSummary,"
-    "googleMapsUri,photos,types"
+    "googleMapsUri,photos,types,location"
 )
 
 
-def fetch_salons(query_text: str, max_results: int = 60) -> list:
+def fetch_salons(query_text: str, max_results: int = 20) -> list:
     url = "https://places.googleapis.com/v1/places:searchText"
     headers = {
         "Content-Type": "application/json",

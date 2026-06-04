@@ -7,7 +7,7 @@ from src.repositories.salon_repository import SalonRepository
 from src.services.salon_service import SalonService
 from src.routes.routes import register_routes
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "..", "db", "database.sqlite")
+DB_PATH = os.path.join(os.path.dirname(__file__), "..", "salons.db")
 
 
 def create_app() -> FastAPI:

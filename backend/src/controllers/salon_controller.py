@@ -29,6 +29,10 @@ def create_salon_router(service: SalonService) -> APIRouter:
             sort_order=sort_order,
         )
 
+    @router.get("/salons/map")
+    def get_map_salons():
+        return service.get_map_salons()
+
     @router.get("/salons/{place_id:path}")
     def get_salon(place_id: str):
         salon = service.get_salon_by_id(place_id)
