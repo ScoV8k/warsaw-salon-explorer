@@ -30,19 +30,25 @@ def create_photo_router() -> APIRouter:
         params = {
             "maxWidthPx": max_width,
             "key": PLACES_API_KEY,
+            "skipHttpRedirect": "true",
         }
 
-        async with httpx.AsyncClient(follow_redirects=True, timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(url, params=params)
 
         if resp.status_code != 200:
-            raise HTTPException(status_code=502, detail="Failed to fetch photo from Google")
+            raise HTTPException(status_code=502, detail="Failed to fetch photo URL from Google")
 
-        content_type = resp.headers.get("content-type", "image/jpeg")
+        data = resp.json()
+        photo_uri = data.get("photoUri")
 
-        return Response(
-            content=resp.content,
-            media_type=content_type,
+        if not photo_uri:
+            raise HTTPException(status_code=404, detail="Photo URI not found")
+
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(
+            url=photo_uri,
+            status_code=302,
             headers={
                 "Cache-Control": "public, max-age=86400, immutable",
             },
