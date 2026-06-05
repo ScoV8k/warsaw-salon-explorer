@@ -1,9 +1,10 @@
 import os
 import re
+import time
 
 import httpx
 from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import Response
+from fastapi.responses import RedirectResponse
 from dotenv import load_dotenv
 
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".env"))
@@ -11,6 +12,9 @@ PLACES_API_KEY = os.getenv("PLACES_API_KEY", "")
 
 PHOTO_NAME_RE = re.compile(r"^places/[A-Za-z0-9_-]+/photos/[A-Za-z0-9_-]+$")
 
+# Globalny cache w pamięci. Format: {"photo_name_width": (url, expiry_timestamp)}
+url_cache = {}
+CACHE_TTL = 86400  # 24 godziny (86400 sekund)
 
 def create_photo_router() -> APIRouter:
     router = APIRouter()
@@ -26,6 +30,22 @@ def create_photo_router() -> APIRouter:
         if not PHOTO_NAME_RE.match(photo_name):
             raise HTTPException(status_code=400, detail="Invalid photo reference")
 
+        cache_key = f"{photo_name}_{max_width}"
+        current_time = time.time()
+
+        # 1. Sprawdzenie cache'u
+        if cache_key in url_cache:
+            cached_url, expiry = url_cache[cache_key]
+            if current_time < expiry:
+                return RedirectResponse(
+                    url=cached_url,
+                    status_code=302,
+                    headers={
+                        "Cache-Control": "public, max-age=86400, immutable",
+                    },
+                )
+
+        # 2. Jeśli brak w cache lub wygasł, pobierz z Google API
         url = f"https://places.googleapis.com/v1/{photo_name}/media"
         params = {
             "maxWidthPx": max_width,
@@ -45,7 +65,9 @@ def create_photo_router() -> APIRouter:
         if not photo_uri:
             raise HTTPException(status_code=404, detail="Photo URI not found")
 
-        from fastapi.responses import RedirectResponse
+        # 3. Zapisz w cache
+        url_cache[cache_key] = (photo_uri, current_time + CACHE_TTL)
+
         return RedirectResponse(
             url=photo_uri,
             status_code=302,
