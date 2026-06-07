@@ -6,13 +6,10 @@ A lightweight, full-stack web application for browsing and discovering beauty sa
 > 
 > **Live Demo:** [https://warsaw-salon-explorer-eta.vercel.app/](https://warsaw-salon-explorer-eta.vercel.app/)
 > 
-> **Data Scope:** To manage initial data collection costs from the Google Places API, the currently seeded database covers only selected districts of Warsaw. The scraping architecture is fully scalable and can easily be expanded to cover the entire city by simply updating the search parameters, provided a larger API budget.
-> 
-> **Note on Photo Fetching:** Salon photos are fetched dynamically in real-time rather than being downloaded and stored in the database. This architectural decision was made to keep the database lightweight and avoid the overhead of implementing and maintaining a dedicated blob storage for image files.
-
-However, because real-time fetching from the Google Places API incurs per-request charges, I have implemented a strict GCP **safety quota of 100 photo requests per day** for this live demo to prevent uncontrolled cloud billing. If the images appear broken, the daily quota has been reached.
-
----
+> Please note the following constraints of this free-tier deployment:
+> * ⏳ **Cold Start (30-60s):** The backend is hosted on Render's free tier, which spins down when idle. The initial page load may take up to a minute as the server wakes up.
+> * 🗺️ **Data Scope:** To optimize Google Places API costs, the seeded database covers only selected districts. The scraper itself is fully scalable to the entire city.
+> * 🖼️ **Photo Architecture & Quota:** To prevent big API costs during the initial data scraping phase and to eliminate the need for dedicated blob storage, salon photos are fetched dynamically in real-time. To prevent uncontrolled cloud billing on this live demo, I've set a strict GCP safety limit of **100 photo requests per day**. Broken images indicate that the daily quota has been reached.
 
 ## ✨ Features Implemented
 - **Data Collection:** Automated scraper fetching initial data from Google Places.
