@@ -123,9 +123,9 @@ function MapPageContent() {
                 >
                   <div className="flex gap-3">
                     {cover ? (
-                      <img src={getPhotoUrl(cover, 100)} className="w-16 h-16 rounded-lg object-cover flex-shrink-0" alt="" />
+                      <img src={getPhotoUrl(cover, 100)} loading="lazy" className="w-16 h-16 rounded-lg object-cover flex-shrink-0" alt="" />
                     ) : (
-                      <img src="/placeholder.png" className="w-16 h-16 rounded-lg object-cover flex-shrink-0" alt="No photo" />
+                      <img src="/placeholder.png" loading="lazy" className="w-16 h-16 rounded-lg object-cover flex-shrink-0" alt="No photo" />
                     )}
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-sm truncate text-foreground">{salon.name}</h3>
