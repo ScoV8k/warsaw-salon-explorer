@@ -6,9 +6,9 @@ A lightweight, full-stack web application for browsing and discovering beauty sa
 > 
 > **Live Demo:** [https://warsaw-salon-explorer-eta.vercel.app/](https://warsaw-salon-explorer-eta.vercel.app/)
 > 
-> **Data Scope (Cost Optimization):** To manage initial data collection costs from the Google Places API, the currently seeded database covers only selected districts of Warsaw. The scraping architecture is fully scalable and can easily be expanded to cover the entire city (or country) by simply updating the search parameters, provided a larger API budget.
+> **Data Scope:** To manage initial data collection costs from the Google Places API, the currently seeded database covers only selected districts of Warsaw. The scraping architecture is fully scalable and can easily be expanded to cover the entire city by simply updating the search parameters, provided a larger API budget.
 > 
-> **Note on Photo Fetching:** Salon photos are fetched dynamically in real-time rather than being downloaded and stored in the database. This architectural decision was made to keep the database lightweight and avoid the overhead of implementing and maintaining a dedicated blob storage (e.g., AWS S3) for image files.
+> **Note on Photo Fetching:** Salon photos are fetched dynamically in real-time rather than being downloaded and stored in the database. This architectural decision was made to keep the database lightweight and avoid the overhead of implementing and maintaining a dedicated blob storage for image files.
 
 However, because real-time fetching from the Google Places API incurs per-request charges, I have implemented a strict GCP **safety quota of 100 photo requests per day** for this live demo to prevent uncontrolled cloud billing. If the images appear broken, the daily quota has been reached.
 
