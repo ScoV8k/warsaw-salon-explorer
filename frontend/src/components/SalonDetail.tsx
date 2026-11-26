@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Salon, SalonUpdate, Review, PhotoInfo } from "@/lib/types";
-import { fetchSalon, updateSalon, getPhotoUrl } from "@/lib/api";
+import { Salon, SalonUpdate, Review } from "@/lib/types";
+import { fetchSalon, updateSalon, getPhotoUrl, handleImgError, PLACEHOLDER_IMG } from "@/lib/api";
 
 interface SalonDetailProps {
   placeId: string;
@@ -47,17 +47,44 @@ function ReviewCard({ review }: { review: Review }) {
   );
 }
 
-function PhotoGallery({ photos }: { photos: PhotoInfo[] }) {
-  const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
+function addTo(set: Set<number>, i: number) {
+  return new Set(set).add(i);
+}
 
-  if (photos.length === 0) {
+function removeFrom(set: Set<number>, i: number) {
+  const next = new Set(set);
+  next.delete(i);
+  return next;
+}
+
+/**
+ * Photos cost a Google API call the first time they are shown, so only the cover
+ * is fetched automatically. The rest come from the backend cache; uncached ones
+ * show a "Load photo" tile and are fetched only when clicked.
+ */
+function PhotoGallery({ placeId, count }: { placeId: string; count: number }) {
+  const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
+  const [requested, setRequested] = useState<Set<number>>(() => new Set([0]));
+  const [failed, setFailed] = useState<Set<number>>(() => new Set());
+  const [loaded, setLoaded] = useState<Set<number>>(() => new Set());
+
+  const photoUrl = (i: number) => getPhotoUrl(placeId, i, { fetch: requested.has(i) });
+  const viewable = Array.from(loaded).sort((a, b) => a - b);
+
+  function step(dir: 1 | -1) {
+    if (lightboxIdx === null) return;
+    const pos = viewable.indexOf(lightboxIdx);
+    setLightboxIdx(viewable[(pos + dir + viewable.length) % viewable.length]);
+  }
+
+  if (count === 0) {
     return (
       <div id="photo-gallery" className="mb-5">
         <div className="flex overflow-x-auto pb-2 -mx-6 sm:-mx-8 px-6 sm:px-8">
           <div className="flex-shrink-0 rounded-lg overflow-hidden border border-border">
             <img
-              src="/placeholder.png"
-              alt="Brak zdjęć"
+              src={PLACEHOLDER_IMG}
+              alt="No photos"
               className="h-[120px] w-[180px] object-cover"
             />
           </div>
@@ -66,31 +93,60 @@ function PhotoGallery({ photos }: { photos: PhotoInfo[] }) {
     );
   }
 
+  const tileClass = "flex-shrink-0 snap-start rounded-lg overflow-hidden h-[120px] w-[160px]";
+
   return (
     <>
       <div id="photo-gallery" className="mb-5">
         <div className="flex gap-1.5 overflow-x-auto pb-2 -mx-6 sm:-mx-8 px-6 sm:px-8 snap-x snap-mandatory">
-          {photos.map((photo, i) => (
-            <button
-              key={photo.name}
-              onClick={() => setLightboxIdx(i)}
-              className="flex-shrink-0 snap-start rounded-lg overflow-hidden
-                         transition-all duration-200 cursor-pointer group
-                         hover:ring-2 hover:ring-accent/30"
-            >
-              <img
-                src={getPhotoUrl(photo.name, 400)}
-                alt={`Photo ${i + 1}`}
-                width={photo.width > photo.height ? 180 : 120}
-                height={120}
-                className="h-[120px] w-auto object-cover transition-transform duration-300
-                           group-hover:scale-[1.03]"
-                loading="lazy"
-              />
-            </button>
-          ))}
+          {Array.from({ length: count }, (_, i) => {
+            if (failed.has(i) && !requested.has(i)) {
+              return (
+                <button
+                  key={i}
+                  onClick={() => {
+                    setRequested((s) => addTo(s, i));
+                    setFailed((s) => removeFrom(s, i));
+                  }}
+                  className={`${tileClass} border border-dashed border-border bg-surface-hover
+                              flex flex-col items-center justify-center gap-1 text-muted
+                              hover:text-accent hover:border-accent/50 transition-colors cursor-pointer`}
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v13.5a1.5 1.5 0 001.5 1.5z" />
+                  </svg>
+                  <span className="text-[11px] font-medium">Load photo</span>
+                </button>
+              );
+            }
+            if (failed.has(i)) {
+              return (
+                <div key={i} className={`${tileClass} border border-border`}>
+                  <img src={PLACEHOLDER_IMG} alt="Photo unavailable" className="w-full h-full object-cover" />
+                </div>
+              );
+            }
+            return (
+              <button
+                key={i}
+                onClick={() => loaded.has(i) && setLightboxIdx(i)}
+                className={`${tileClass} bg-surface-hover transition-all duration-200 cursor-pointer group
+                            hover:ring-2 hover:ring-accent/30`}
+              >
+                <img
+                  src={photoUrl(i)}
+                  alt={`Photo ${i + 1}`}
+                  onLoad={() => setLoaded((s) => addTo(s, i))}
+                  onError={() => setFailed((s) => addTo(s, i))}
+                  className="w-full h-full object-cover transition-transform duration-300
+                             group-hover:scale-[1.03]"
+                  decoding="async"
+                />
+              </button>
+            );
+          })}
         </div>
-        <p className="text-[10px] text-muted mt-1">{photos.length} photo{photos.length !== 1 ? "s" : ""}</p>
+        <p className="text-[10px] text-muted mt-1">{count} photo{count !== 1 ? "s" : ""}</p>
       </div>
 
       {lightboxIdx !== null && (
@@ -109,12 +165,12 @@ function PhotoGallery({ photos }: { photos: PhotoInfo[] }) {
             </svg>
           </button>
 
-          {photos.length > 1 && (
+          {viewable.length > 1 && (
             <>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  setLightboxIdx((lightboxIdx - 1 + photos.length) % photos.length);
+                  step(-1);
                 }}
                 className="absolute left-4 p-2.5 rounded-full bg-white/10 text-white/70 hover:text-white
                            hover:bg-white/20 transition-all cursor-pointer"
@@ -126,7 +182,7 @@ function PhotoGallery({ photos }: { photos: PhotoInfo[] }) {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  setLightboxIdx((lightboxIdx + 1) % photos.length);
+                  step(1);
                 }}
                 className="absolute right-4 p-2.5 rounded-full bg-white/10 text-white/70 hover:text-white
                            hover:bg-white/20 transition-all cursor-pointer"
@@ -138,16 +194,18 @@ function PhotoGallery({ photos }: { photos: PhotoInfo[] }) {
             </>
           )}
 
+          {/* Same URL as the tile, so the browser shows it from cache — no extra API call. */}
           <img
-            src={getPhotoUrl(photos[lightboxIdx].name, 1200)}
+            src={photoUrl(lightboxIdx)}
             alt={`Photo ${lightboxIdx + 1}`}
+            onError={handleImgError}
             className="max-h-[85vh] max-w-[90vw] object-contain rounded-xl
                        animate-[slideUp_200ms_ease-out]"
             onClick={(e) => e.stopPropagation()}
           />
 
           <span className="absolute bottom-6 text-white/40 text-xs font-mono">
-            {lightboxIdx + 1} / {photos.length}
+            {viewable.indexOf(lightboxIdx) + 1} / {viewable.length}
           </span>
         </div>
       )}
@@ -355,10 +413,7 @@ export default function SalonDetail({ placeId, onClose, onUpdated }: SalonDetail
               </div>
             </div>
 
-            {(() => {
-              const photos: PhotoInfo[] = Array.isArray(salon.photos_json) ? salon.photos_json : [];
-              return <PhotoGallery photos={photos} />;
-            })()}
+            <PhotoGallery key={salon.google_place_id} placeId={salon.google_place_id} count={salon.photo_count} />
 
             <div className="border-t border-border/60 pt-4 mb-4">
               <div className="flex items-center justify-between mb-4">

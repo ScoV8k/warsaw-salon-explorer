@@ -7,9 +7,9 @@ A lightweight, full-stack web application for browsing and discovering beauty sa
 > **Live Demo:** [https://warsaw-salon-explorer-eta.vercel.app/](https://warsaw-salon-explorer-eta.vercel.app/)
 > 
 > Please note the following constraints of this free-tier deployment:
-> * ⏳ **Cold Start (30-60s):** The backend is hosted on Render's free tier, which spins down when idle. The initial page load may take up to a minute as the server wakes up.
+> * 🖥️ **Always-on backend:** The API runs on an Oracle Cloud Always Free VM (no spin-down, no cold start).
 > * 🗺️ **Data Scope:** To optimize Google Places API costs, the seeded database covers only selected districts. The scraper itself is fully scalable to the entire city.
-> * 🖼️ **Photo Architecture & Quota:** To prevent big API costs during the initial data scraping phase and to eliminate the need for dedicated blob storage, salon photos are fetched dynamically in real-time. To prevent uncontrolled cloud billing on this live demo, I've set a strict GCP safety limit of **100 photo requests per day**. Broken images indicate that the daily quota has been reached.
+> * 🖼️ **Photos on demand:** Lists and the map only show photos the backend has already cached. A photo is fetched from Google only when someone opens a salon (the cover automatically, the rest on click), and the backend enforces a hard daily budget of Google calls (`PLACES_DAILY_BUDGET`, default 30). Placeholders mean a photo hasn't been opened yet or today's budget is used up.
 
 ## ✨ Features Implemented
 - **Data Collection:** Automated scraper fetching initial data from Google Places.
@@ -65,6 +65,27 @@ Start the frontend app (port 3000):
 cd frontend
 npm run dev
 ```
+
+---
+
+## ☁️ Deployment (Oracle Cloud Always Free)
+
+Backend: Ubuntu 24.04 VM (Ampere A1) → Caddy (automatic HTTPS) → uvicorn, managed by systemd. Frontend: Vercel.
+
+1. Create an Ubuntu 24.04 VM and open TCP 80 and 443 in its subnet's Security List.
+2. Point a hostname at the VM's public IP (e.g. a free `duckdns.org` subdomain).
+3. On the VM:
+   ```bash
+   git clone https://github.com/ScoV8k/warsaw-salon-explorer.git && cd warsaw-salon-explorer
+   sudo bash deploy/setup.sh          # first run creates /etc/beauty-salons.env
+   sudo nano /etc/beauty-salons.env   # PLACES_API_KEY, API_DOMAIN, ALLOWED_ORIGINS
+   sudo bash deploy/setup.sh          # installs and starts everything
+   ```
+4. On Vercel set `NEXT_PUBLIC_API_URL=https://<your-domain>` and redeploy.
+
+Re-run `sudo bash deploy/setup.sh` to deploy new code. The server keeps its own database and photo cache in `/var/lib/beauty-salons`. `GET /api/health` shows today's Google API usage.
+
+Backend tests (mocked Google, no cost): `cd backend && python -m unittest discover -s tests`
 
 ---
 

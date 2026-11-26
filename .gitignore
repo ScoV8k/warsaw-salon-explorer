@@ -1,0 +1,6 @@
+.env
+.DS_Store
+__pycache__/
+backend/photo_cache/
+backend/salons.db-shm
+backend/salons.db-wal

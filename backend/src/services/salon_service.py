@@ -61,21 +61,32 @@ class SalonService:
         return self.repo.search_salons(query, limit)
 
     def get_map_salons(self) -> list[dict]:
-        rows = self.repo.get_all_for_map()
-        return [self._enrich_salon(r) for r in rows]
+        return [self._enrich_salon(r) for r in self.repo.get_all_for_map()]
 
     def update_salon(self, place_id: str, fields: dict) -> Optional[dict]:
         if not self.repo.find_by_id(place_id):
             return None
         row = self.repo.update(place_id, fields)
         return self._enrich_salon(row) if row else None
-    def _enrich_salon(self, row: dict) -> dict:
-        for json_field in ("top_reviews", "photos_json"):
-            if row.get(json_field) and isinstance(row[json_field], str):
-                try:
-                    row[json_field] = json.loads(row[json_field])
-                except (json.JSONDecodeError, TypeError):
-                    pass
 
+    def _enrich_salon(self, row: dict) -> dict:
+        if row.get("top_reviews") and isinstance(row["top_reviews"], str):
+            try:
+                row["top_reviews"] = json.loads(row["top_reviews"])
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        # Photo names expire and are only needed server-side; clients address
+        # photos as /api/photos/{place_id}/{index}.
+        row["photo_count"] = self._count_photos(row.pop("photos_json", None))
         row.pop("raw_json", None)
+        row.pop("photos_refreshed_at", None)
         return row
+
+    @staticmethod
+    def _count_photos(photos_json) -> int:
+        try:
+            photos = json.loads(photos_json) if isinstance(photos_json, str) else photos_json
+        except json.JSONDecodeError:
+            return 0
+        return len(photos) if isinstance(photos, list) else 0

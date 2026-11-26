@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { APIProvider, Map, AdvancedMarker, InfoWindow, MapCameraChangedEvent } from "@vis.gl/react-google-maps";
-import { Salon, PhotoInfo } from "@/lib/types";
-import { getPhotoUrl } from "@/lib/api";
+import { Salon } from "@/lib/types";
+import { getPhotoUrl, handleImgError } from "@/lib/api";
 
 export interface MapBounds {
   north: number;
@@ -89,15 +89,13 @@ export default function MapComponent({
               const salon = salons.find((s) => s.google_place_id === activeSalonId);
               if (!salon) return null;
 
-              const photos: PhotoInfo[] = Array.isArray(salon.photos_json) ? salon.photos_json : [];
-              const coverPhoto = photos.length > 0 ? photos[0] : null;
-
               return (
                 <div className="flex flex-col gap-2 p-1 w-[200px]">
-                  {coverPhoto ? (
+                  {salon.photo_count > 0 ? (
                     <img
-                      src={getPhotoUrl(coverPhoto.name, 200)}
+                      src={getPhotoUrl(salon.google_place_id)}
                       alt=""
+                      onError={handleImgError}
                       className="w-full h-24 object-cover rounded-md"
                     />
                   ) : (

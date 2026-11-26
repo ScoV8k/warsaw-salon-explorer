@@ -1,0 +1,23 @@
+[Unit]
+Description=Beauty Salons API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=beauty
+Group=beauty
+WorkingDirectory=/opt/beauty-salons/backend
+EnvironmentFile=/etc/beauty-salons.env
+# One worker: the per-photo download locks live in process memory.
+ExecStart=/opt/beauty-salons/.venv/bin/uvicorn run:app --host 127.0.0.1 --port 3001 --workers 1 --proxy-headers
+Restart=always
+RestartSec=3
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/beauty-salons
+
+[Install]
+WantedBy=multi-user.target

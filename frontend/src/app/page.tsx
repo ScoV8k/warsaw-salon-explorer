@@ -112,10 +112,11 @@ function HomeContent() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {salons.map((salon) => (
+            {salons.map((salon, i) => (
               <SalonCard
                 key={salon.google_place_id}
                 salon={salon}
+                priority={i < 3}
                 onClick={() => setSelectedId(salon.google_place_id)}
               />
             ))}

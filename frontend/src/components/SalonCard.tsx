@@ -1,7 +1,7 @@
 "use client";
 
-import { Salon, PhotoInfo } from "@/lib/types";
-import { getPhotoUrl } from "@/lib/api";
+import { Salon } from "@/lib/types";
+import { getPhotoUrl, handleImgError, PLACEHOLDER_IMG } from "@/lib/api";
 
 function StarRating({ rating }: { rating: number | null }) {
   if (rating === null) return <span className="text-muted text-xs">No rating</span>;
@@ -39,11 +39,10 @@ function Badge({ children, variant = "default" }: { children: React.ReactNode; v
 interface SalonCardProps {
   salon: Salon;
   onClick: () => void;
+  priority?: boolean;
 }
 
-export default function SalonCard({ salon, onClick }: SalonCardProps) {
-  const photos: PhotoInfo[] = Array.isArray(salon.photos_json) ? salon.photos_json : [];
-  const coverPhoto = photos.length > 0 ? photos[0] : null;
+export default function SalonCard({ salon, onClick, priority = false }: SalonCardProps) {
 
   return (
     <button
@@ -57,11 +56,14 @@ export default function SalonCard({ salon, onClick }: SalonCardProps) {
     >
       <div className="relative h-40 overflow-hidden bg-surface-hover flex items-center justify-center">
         <img
-          src={coverPhoto ? getPhotoUrl(coverPhoto.name, 400) : "/placeholder.png"}
+          src={salon.photo_count > 0 ? getPhotoUrl(salon.google_place_id) : PLACEHOLDER_IMG}
           alt=""
+          onError={handleImgError}
+          decoding="async"
+          fetchPriority={priority ? "high" : "auto"}
           className="w-full h-full object-cover transition-transform duration-500 ease-out
                      group-hover:scale-[1.03]"
-          loading="lazy"
+          loading={priority ? "eager" : "lazy"}
         />
       </div>
       <div className="p-4">

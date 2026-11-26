@@ -10,10 +10,6 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "warsaw-salon-explorer-gys8.onrender.com",
-      },
-      {
-        protocol: "https",
         hostname: "places.googleapis.com",
       },
       {
