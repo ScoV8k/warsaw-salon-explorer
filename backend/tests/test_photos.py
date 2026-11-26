@@ -78,12 +78,13 @@ class PhotoEndpointTest(unittest.IsolatedAsyncioTestCase):
         self.google = FakeGoogle(delay=0.05)
         self.app = self._app(budget=10)
 
-    def _app(self, budget: int):
+    def _app(self, budget: int, photo_budget: int = 100):
         return create_app(
             db_path=self.db,
             photo_cache_dir=os.path.join(self.tmp.name, "cache"),
             places_api_key="test-key",
             daily_budget=budget,
+            daily_photo_budget=photo_budget,
             http_client=httpx.AsyncClient(transport=httpx.MockTransport(self.google)),
         )
 
@@ -164,6 +165,15 @@ class PhotoEndpointTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(r.headers["x-photo-budget"], "exhausted")
             self.assertEqual(len(self.google.calls), 1)
 
+    async def test_photo_sub_budget_caps_downloads(self):
+        app = self._app(budget=10, photo_budget=1)
+        async with self.client(app) as c:
+            self.assertEqual((await c.get("/api/photos/good/0?fetch=1")).status_code, 200)
+            self.assertEqual((await c.get("/api/photos/good/1?fetch=1")).status_code, 404)
+            usage = (await c.get("/api/health")).json()["photo_budget"]
+            self.assertEqual(usage["used"], 1)
+            self.assertEqual(usage["by_kind"]["photo"], {"used": 1, "limit": 1})
+
     async def test_salon_payloads_expose_photo_count_not_names(self):
         async with self.client() as c:
             listed = (await c.get("/api/salons?sort_by=name")).json()["data"]
@@ -187,17 +197,33 @@ class ApiBudgetTest(unittest.TestCase):
     def test_limit_and_daily_reset(self):
         with tempfile.TemporaryDirectory() as tmp:
             now = [datetime(2026, 11, 26, 23, 30, tzinfo=QUOTA_TZ)]
-            budget = ApiBudget(os.path.join(tmp, "b.db"), daily_limit=2, now=lambda: now[0])
-            self.assertEqual([budget.try_consume() for _ in range(3)], [True, True, False])
-            self.assertEqual(budget.usage()["used"], 2)
+            budget = ApiBudget(os.path.join(tmp, "b.db"), daily_limit=3, kind_limits={"photo": 1}, now=lambda: now[0])
+            self.assertTrue(budget.try_consume("photo"))
+            self.assertFalse(budget.try_consume("photo"))  # kind limit
+            self.assertEqual([budget.try_consume("details") for _ in range(3)], [True, True, False])  # total limit
+            self.assertEqual(budget.usage()["used"], 3)
 
             now[0] += timedelta(hours=1)  # past midnight Pacific Time
-            self.assertTrue(budget.try_consume())
-            self.assertEqual(budget.usage(), {"day": "2026-11-27", "used": 1, "limit": 2})
+            self.assertTrue(budget.try_consume("photo"))
+            usage = budget.usage()
+            self.assertEqual((usage["day"], usage["used"]), ("2026-11-27", 1))
+
+    def test_legacy_counter_is_carried_over(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = os.path.join(tmp, "b.db")
+            conn = sqlite3.connect(db)
+            conn.execute("CREATE TABLE api_usage (day TEXT PRIMARY KEY, count INTEGER NOT NULL)")
+            conn.execute("INSERT INTO api_usage VALUES ('2026-11-26', 4)")
+            conn.commit()
+            conn.close()
+            now = lambda: datetime(2026, 11, 26, 12, 0, tzinfo=QUOTA_TZ)  # noqa: E731
+            budget = ApiBudget(db, daily_limit=5, now=now)
+            self.assertEqual(budget.usage()["used"], 4)
+            self.assertEqual([budget.try_consume("photo") for _ in range(2)], [True, False])
 
     def test_zero_limit_blocks_everything(self):
         with tempfile.TemporaryDirectory() as tmp:
-            self.assertFalse(ApiBudget(os.path.join(tmp, "b.db"), daily_limit=0).try_consume())
+            self.assertFalse(ApiBudget(os.path.join(tmp, "b.db"), daily_limit=0).try_consume("photo"))
 
 
 if __name__ == "__main__":

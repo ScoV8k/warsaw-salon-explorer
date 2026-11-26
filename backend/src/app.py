@@ -9,7 +9,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from src import config
 from src.repositories.salon_repository import SalonRepository
 from src.services.api_budget import ApiBudget
-from src.services.photo_service import PhotoService
+from src.services.photo_service import PHOTO, PhotoService
 from src.services.salon_service import SalonService
 from src.routes.routes import register_routes
 
@@ -29,10 +29,11 @@ def create_app(
     photo_cache_dir: str = config.PHOTO_CACHE_DIR,
     places_api_key: str = config.PLACES_API_KEY,
     daily_budget: int = config.PLACES_DAILY_BUDGET,
+    daily_photo_budget: int = config.PLACES_DAILY_PHOTO_BUDGET,
     http_client: Optional[httpx.AsyncClient] = None,
 ) -> FastAPI:
     repo = SalonRepository(db_path)
-    budget = ApiBudget(db_path, daily_budget)
+    budget = ApiBudget(db_path, daily_budget, kind_limits={PHOTO: daily_photo_budget})
     photos = PhotoService(repo, budget, places_api_key, photo_cache_dir, client=http_client)
     service = SalonService(repo)
 

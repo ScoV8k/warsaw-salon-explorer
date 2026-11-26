@@ -14,6 +14,10 @@ from src.services.api_budget import ApiBudget
 PHOTO_WIDTH = 800
 MAX_PHOTOS = 5
 
+# ApiBudget kinds
+PHOTO = "photo"
+DETAILS = "details"
+
 PERMANENT_FAILURE_TTL = 24 * 3600
 TRANSIENT_FAILURE_TTL = 5 * 60
 
@@ -150,7 +154,7 @@ class PhotoService:
         """True when saved, False when Google says the photo name is invalid."""
         if not photo_name:
             return False
-        if not self.budget.try_consume():
+        if not self.budget.try_consume(PHOTO):
             raise BudgetExhausted()
         try:
             resp = await self.client.get(
@@ -175,7 +179,7 @@ class PhotoService:
         raise self._fail(key, permanent=False, status=502)
 
     async def _refresh_photos(self, place_id: str) -> list[dict]:
-        if not self.budget.try_consume():
+        if not self.budget.try_consume(DETAILS):
             raise BudgetExhausted()
         try:
             resp = await self.client.get(

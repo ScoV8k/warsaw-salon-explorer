@@ -40,9 +40,11 @@ interface SalonCardProps {
   salon: Salon;
   onClick: () => void;
   priority?: boolean;
+  /** Let the backend fetch an uncached cover from Google (counts against the daily budget). */
+  fetchCover?: boolean;
 }
 
-export default function SalonCard({ salon, onClick, priority = false }: SalonCardProps) {
+export default function SalonCard({ salon, onClick, priority = false, fetchCover = false }: SalonCardProps) {
 
   return (
     <button
@@ -56,14 +58,14 @@ export default function SalonCard({ salon, onClick, priority = false }: SalonCar
     >
       <div className="relative h-40 overflow-hidden bg-surface-hover flex items-center justify-center">
         <img
-          src={salon.photo_count > 0 ? getPhotoUrl(salon.google_place_id) : PLACEHOLDER_IMG}
+          src={salon.photo_count > 0 ? getPhotoUrl(salon.google_place_id, 0, { fetch: fetchCover }) : PLACEHOLDER_IMG}
           alt=""
           onError={handleImgError}
           decoding="async"
           fetchPriority={priority ? "high" : "auto"}
           className="w-full h-full object-cover transition-transform duration-500 ease-out
                      group-hover:scale-[1.03]"
-          loading={priority ? "eager" : "lazy"}
+          loading={priority || fetchCover ? "eager" : "lazy"}
         />
       </div>
       <div className="p-4">

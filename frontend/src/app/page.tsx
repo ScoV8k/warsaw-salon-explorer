@@ -1,65 +1,67 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import { Salon, District, Stats } from "@/lib/types";
-import { fetchSalons, fetchDistricts, fetchStats, SalonListParams } from "@/lib/api";
+import { useState, useEffect, useMemo } from "react";
+import { District, PaginatedResponse } from "@/lib/types";
+import { fetchSalons, fetchDistricts, SalonListParams } from "@/lib/api";
 import SalonCard from "@/components/SalonCard";
 import FilterBar from "@/components/FilterBar";
 import Pagination from "@/components/Pagination";
-import StatsBar from "@/components/StatsBar";
 import SalonDetail from "@/components/SalonDetail";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
+const PER_PAGE = 18;
+const EMPTY_PAGE: PaginatedResponse = { data: [], total: 0, page: 1, per_page: PER_PAGE, total_pages: 1 };
+
 function HomeContent() {
-  const [salons, setSalons] = useState<Salon[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
   const [district, setDistrict] = useState("");
   const [sortBy, setSortBy] = useState("name:asc");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  
+  const [reloadToken, setReloadToken] = useState(0);
+  // Last response, tagged with the query it answers; loading = it answers an older query.
+  const [result, setResult] = useState<{ key: string; data: PaginatedResponse } | null>(null);
+
   const searchParams = useSearchParams();
   const search = searchParams.get("q") || "";
 
-  useEffect(() => {
+  // A new search starts from page 1 (adjusting state during render, not in an effect).
+  const [prevSearch, setPrevSearch] = useState(search);
+  if (search !== prevSearch) {
+    setPrevSearch(search);
     setPage(1);
-  }, [search]);
+  }
 
   useEffect(() => {
     fetchDistricts().then(setDistricts).catch(() => {});
-    fetchStats().then(setStats).catch(() => {});
   }, []);
 
-  const loadSalons = useCallback(() => {
-    setLoading(true);
+  const params = useMemo<SalonListParams>(() => {
     const [sort, order] = sortBy.split(":");
-    const params: SalonListParams = {
+    return {
       page,
-      per_page: 18,
+      per_page: PER_PAGE,
       sort_by: sort,
       sort_order: order,
+      district: district || undefined,
+      search: search || undefined,
     };
-    if (district) params.district = district;
-    if (search) params.search = search;
-
-    fetchSalons(params)
-      .then((res) => {
-        setSalons(res.data);
-        setTotalPages(res.total_pages);
-        setTotal(res.total);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
   }, [page, district, search, sortBy]);
+  const queryKey = `${JSON.stringify(params)}#${reloadToken}`;
 
   useEffect(() => {
-    loadSalons();
-  }, [loadSalons]);
+    let cancelled = false; // ignore responses for a page the user already left
+    fetchSalons(params)
+      .then((data) => !cancelled && setResult({ key: queryKey, data }))
+      .catch(() => !cancelled && setResult({ key: queryKey, data: EMPTY_PAGE }));
+    return () => {
+      cancelled = true;
+    };
+  }, [params, queryKey]);
+
+  const loading = result?.key !== queryKey;
+  const { data: salons, total, total_pages: totalPages } = result?.data ?? EMPTY_PAGE;
 
   function handleDistrictChange(d: string) {
     setDistrict(d);
@@ -117,6 +119,7 @@ function HomeContent() {
                 key={salon.google_place_id}
                 salon={salon}
                 priority={i < 3}
+                fetchCover
                 onClick={() => setSelectedId(salon.google_place_id)}
               />
             ))}
@@ -128,9 +131,10 @@ function HomeContent() {
 
       {selectedId && (
         <SalonDetail
+          key={selectedId}
           placeId={selectedId}
           onClose={() => setSelectedId(null)}
-          onUpdated={loadSalons}
+          onUpdated={() => setReloadToken((t) => t + 1)}
         />
       )}
     </div>

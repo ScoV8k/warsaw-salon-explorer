@@ -6,7 +6,9 @@ import {
   SalonUpdate,
 } from "./types";
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001").replace(/\/+$/, "");
+// Empty by default: requests go to same-origin /api/*, which next.config.ts proxies
+// to the backend (API_PROXY_TARGET). Set NEXT_PUBLIC_API_URL only to bypass the proxy.
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/+$/, "");
 
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {

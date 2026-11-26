@@ -120,7 +120,7 @@ function MapPageContent() {
                 >
                   <div className="flex gap-3">
                     {salon.photo_count > 0 ? (
-                      <img src={getPhotoUrl(salon.google_place_id)} onError={handleImgError} loading="lazy" decoding="async" className="w-16 h-16 rounded-lg object-cover flex-shrink-0" alt="" />
+                      <img src={getPhotoUrl(salon.google_place_id, 0, { fetch: true })} onError={handleImgError} loading="lazy" decoding="async" className="w-16 h-16 rounded-lg object-cover flex-shrink-0" alt="" />
                     ) : (
                       <img src="/placeholder.png" loading="lazy" className="w-16 h-16 rounded-lg object-cover flex-shrink-0" alt="No photo" />
                     )}
@@ -169,6 +169,7 @@ function MapPageContent() {
 
       {detailsId && (
         <SalonDetail
+          key={detailsId}
           placeId={detailsId}
           onClose={() => setDetailsId(null)}
           onUpdated={() => {}}

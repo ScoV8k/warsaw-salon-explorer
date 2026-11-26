@@ -270,8 +270,8 @@ export default function SalonDetail({ placeId, onClose, onUpdated }: SalonDetail
   const [saveMsg, setSaveMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [form, setForm] = useState<SalonUpdate>({});
 
+  // Parents mount this with key={placeId}, so state starts fresh for every salon.
   useEffect(() => {
-    setLoading(true);
     fetchSalon(placeId)
       .then((s) => {
         setSalon(s);

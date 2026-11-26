@@ -12,9 +12,12 @@ DB_PATH = os.getenv("DB_PATH", os.path.join(BACKEND_DIR, "salons.db"))
 PHOTO_CACHE_DIR = os.getenv("PHOTO_CACHE_DIR", os.path.join(BACKEND_DIR, "photo_cache"))
 PLACES_API_KEY = os.getenv("PLACES_API_KEY", "")
 
-# Hard cap on Google Places calls per day (photo downloads + photo-name refreshes).
-# Keep it below the quota set in Google Cloud and the monthly free tier.
-PLACES_DAILY_BUDGET = int(os.getenv("PLACES_DAILY_BUDGET", "30"))
+# Hard caps on Google Places calls per day. The total covers photo downloads and
+# photo-name refreshes; keep it below the quota set in Google Cloud (50/day).
+# A cover costs 2 calls the first time (refresh + download), so 45 fits a full
+# page of 18 covers. Photo downloads alone stay under ~1000/month, the free tier.
+PLACES_DAILY_BUDGET = int(os.getenv("PLACES_DAILY_BUDGET", "45"))
+PLACES_DAILY_PHOTO_BUDGET = int(os.getenv("PLACES_DAILY_PHOTO_BUDGET", "33"))
 
 ALLOWED_ORIGINS = [
     o.strip()

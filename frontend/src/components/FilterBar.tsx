@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { District } from "@/lib/types";
 
@@ -25,12 +25,16 @@ export default function FilterBar({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   
-  const [searchValue, setSearchValue] = useState(searchParams.get("q") || "");
+  const urlQuery = searchParams.get("q") || "";
+  const [searchValue, setSearchValue] = useState(urlQuery);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    setSearchValue(searchParams.get("q") || "");
-  }, [searchParams]);
+  // Keep the input in sync when the URL changes (e.g. back/forward navigation).
+  const [prevUrlQuery, setPrevUrlQuery] = useState(urlQuery);
+  if (urlQuery !== prevUrlQuery) {
+    setPrevUrlQuery(urlQuery);
+    setSearchValue(urlQuery);
+  }
 
   function handleSearchChange(e: React.ChangeEvent<HTMLInputElement>) {
     const val = e.target.value;

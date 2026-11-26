@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { APIProvider, Map, AdvancedMarker, InfoWindow, MapCameraChangedEvent } from "@vis.gl/react-google-maps";
 import { Salon } from "@/lib/types";
 import { getPhotoUrl, handleImgError } from "@/lib/api";
@@ -93,7 +92,7 @@ export default function MapComponent({
                 <div className="flex flex-col gap-2 p-1 w-[200px]">
                   {salon.photo_count > 0 ? (
                     <img
-                      src={getPhotoUrl(salon.google_place_id)}
+                      src={getPhotoUrl(salon.google_place_id, 0, { fetch: true })}
                       alt=""
                       onError={handleImgError}
                       className="w-full h-24 object-cover rounded-md"
