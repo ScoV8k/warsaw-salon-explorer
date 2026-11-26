@@ -7,9 +7,9 @@ A lightweight, full-stack web application for browsing and discovering beauty sa
 > **Live Demo:** [https://warsaw-salon-explorer-eta.vercel.app/](https://warsaw-salon-explorer-eta.vercel.app/)
 > 
 > Please note the following constraints of this free-tier deployment:
-> * ⏳ **Cold Start (30-60s):** The backend is hosted on Render's free tier, which spins down when idle. The initial page load may take up to a minute as the server wakes up.
+> * 🖥️ **Always-on backend:** The API runs on an Oracle Cloud Always Free VM (no spin-down, no cold start).
 > * 🗺️ **Data Scope:** To optimize Google Places API costs, the seeded database covers only selected districts. The scraper itself is fully scalable to the entire city.
-> * 🖼️ **Photo Architecture & Quota:** To prevent big API costs during the initial data scraping phase and to eliminate the need for dedicated blob storage, salon photos are fetched dynamically in real-time. To prevent uncontrolled cloud billing on this live demo, I've set a strict GCP safety limit of **100 photo requests per day**. Broken images indicate that the daily quota has been reached.
+> * 🖼️ **Photos on demand:** Cover photos are fetched from Google for the list page being viewed (a full page of 18 fits one day's budget); the map sidebar shows only already cached photos, and further gallery photos load on click. Once fetched, a photo is cached on the server for good. The backend enforces hard daily caps on Google calls (`PLACES_DAILY_BUDGET`, default 45, and `PLACES_DAILY_PHOTO_BUDGET`, default 33). Placeholders mean today's budget is used up; those covers load on a later day.
 
 ## ✨ Features Implemented
 - **Data Collection:** Automated scraper fetching initial data from Google Places.
@@ -42,11 +42,12 @@ Create environment files:
 PLACES_API_KEY=your_google_api_key
 ```
 
-**`frontend/.env.local`**
+**`frontend/.env.local`** (see `frontend/.env.example`)
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:3001
+API_PROXY_TARGET=http://localhost:3001
 NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_api_key
 ```
+The frontend calls same-origin `/api/*`; Next.js proxies it to `API_PROXY_TARGET`.
 
 ### 2. Populate Database & Run
 First, run the scraper to populate the database:
@@ -65,6 +66,35 @@ Start the frontend app (port 3000):
 cd frontend
 npm run dev
 ```
+
+---
+
+## ☁️ Deployment (Oracle Cloud Always Free)
+
+Backend: Ubuntu 24.04 VM (Ampere A1) → Caddy (automatic HTTPS) → uvicorn, managed by systemd. Frontend: Vercel.
+
+1. Create an Ubuntu 24.04 VM and open TCP 80 and 443 in its subnet's Security List.
+2. Point a hostname at the VM's public IP (e.g. a free `duckdns.org` subdomain).
+3. On the VM:
+   ```bash
+   git clone https://github.com/ScoV8k/warsaw-salon-explorer.git && cd warsaw-salon-explorer
+   sudo bash deploy/setup.sh          # first run creates /etc/beauty-salons.env
+   sudo nano /etc/beauty-salons.env   # PLACES_API_KEY, API_DOMAIN, ALLOWED_ORIGINS
+   sudo bash deploy/setup.sh          # installs and starts everything
+   ```
+4. Deploy the frontend on Vercel (below) with `API_PROXY_TARGET=https://<your-domain>`.
+
+Re-run `sudo bash deploy/setup.sh` to deploy new code. The server keeps its own database and photo cache in `/var/lib/beauty-salons`. `GET /api/health` shows today's Google API usage.
+
+Backend tests (mocked Google, no cost): `cd backend && python -m unittest discover -s tests`
+
+### Frontend on Vercel
+1. **Add New → Project →** import the GitHub repository.
+2. **Root Directory:** `frontend` (framework preset: Next.js, default build settings).
+3. **Environment Variables** (Production and Preview):
+   - `API_PROXY_TARGET` = backend URL, e.g. `https://<your-domain>`. The browser only talks to Vercel; Vercel forwards `/api/*` to this URL, so no CORS setup is needed.
+   - `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` = Maps JavaScript API key (restrict it by HTTP referrer to `https://<project>.vercel.app/*`).
+4. Deploy. Both variables are read at build time, so redeploy after changing them.
 
 ---
 

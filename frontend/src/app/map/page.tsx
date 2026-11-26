@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Salon } from "@/lib/types";
-import { fetchMapSalons, getPhotoUrl } from "@/lib/api";
+import { fetchMapSalons, getPhotoUrl, handleImgError } from "@/lib/api";
 import SalonDetail from "@/components/SalonDetail";
 import { MapBounds } from "@/components/MapComponent";
 
@@ -108,9 +108,6 @@ function MapPageContent() {
             </div>
           ) : (
             visibleSalons.map(salon => {
-              const cover = salon.photos_json && Array.isArray(salon.photos_json) && salon.photos_json.length > 0 
-                ? salon.photos_json[0].name : null;
-                
               return (
                 <div 
                   key={salon.google_place_id}
@@ -122,8 +119,8 @@ function MapPageContent() {
                   }`}
                 >
                   <div className="flex gap-3">
-                    {cover ? (
-                      <img src={getPhotoUrl(cover, 100)} loading="lazy" className="w-16 h-16 rounded-lg object-cover flex-shrink-0" alt="" />
+                    {salon.photo_count > 0 ? (
+                      <img src={getPhotoUrl(salon.google_place_id, 0, { fetch: true })} onError={handleImgError} loading="lazy" decoding="async" className="w-16 h-16 rounded-lg object-cover flex-shrink-0" alt="" />
                     ) : (
                       <img src="/placeholder.png" loading="lazy" className="w-16 h-16 rounded-lg object-cover flex-shrink-0" alt="No photo" />
                     )}
@@ -172,6 +169,7 @@ function MapPageContent() {
 
       {detailsId && (
         <SalonDetail
+          key={detailsId}
           placeId={detailsId}
           onClose={() => setDetailsId(null)}
           onUpdated={() => {}}

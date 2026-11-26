@@ -6,7 +6,9 @@ import {
   SalonUpdate,
 } from "./types";
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001").replace(/\/+$/, "");
+// Empty by default: requests go to same-origin /api/*, which next.config.ts proxies
+// to the backend (API_PROXY_TARGET). Set NEXT_PUBLIC_API_URL only to bypass the proxy.
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/+$/, "");
 
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -62,6 +64,18 @@ export function updateSalon(placeId: string, data: SalonUpdate) {
   });
 }
 
-export function getPhotoUrl(photoName: string, maxWidth: number = 800): string {
-  return `${API_BASE}/api/photos/${photoName}?max_width=${maxWidth}`;
+/**
+ * Photo of a salon by position. Without `fetch` the backend serves only photos it
+ * already has cached and never calls Google (free). `fetch: true` lets it download
+ * a missing photo within the daily budget — use it only after an explicit user action.
+ */
+export function getPhotoUrl(placeId: string, index = 0, { fetch = false } = {}): string {
+  return `${API_BASE}/api/photos/${placeId}/${index}${fetch ? "?fetch=1" : ""}`;
+}
+
+export const PLACEHOLDER_IMG = "/placeholder.png";
+
+export function handleImgError(e: React.SyntheticEvent<HTMLImageElement>) {
+  const img = e.currentTarget;
+  if (!img.src.endsWith(PLACEHOLDER_IMG)) img.src = PLACEHOLDER_IMG;
 }

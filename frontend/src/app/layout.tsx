@@ -28,9 +28,10 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} antialiased`}
     >
-      <body className="min-h-screen">
+      <body className="min-h-screen" suppressHydrationWarning>
         <Suspense fallback={<div className="h-[72px] bg-surface border-b border-border/60" />}>
           <Navbar />
         </Suspense>

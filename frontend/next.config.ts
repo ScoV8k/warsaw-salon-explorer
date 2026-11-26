@@ -1,26 +1,13 @@
 import type { NextConfig } from "next";
 
+// The browser always calls same-origin /api/*; Next.js (on Vercel: its edge proxy)
+// forwards those requests to the FastAPI backend. No CORS, no mixed content, and
+// the immutable photo responses can be cached by the CDN.
+const apiTarget = (process.env.API_PROXY_TARGET || "http://localhost:3001").replace(/\/+$/, "");
+
 const nextConfig: NextConfig = {
-  images: {
-    remotePatterns: [
-      {
-        protocol: "http",
-        hostname: "localhost",
-        port: "3001",
-      },
-      {
-        protocol: "https",
-        hostname: "warsaw-salon-explorer-gys8.onrender.com",
-      },
-      {
-        protocol: "https",
-        hostname: "places.googleapis.com",
-      },
-      {
-        protocol: "https",
-        hostname: "*.googleusercontent.com",
-      },
-    ],
+  async rewrites() {
+    return [{ source: "/api/:path*", destination: `${apiTarget}/api/:path*` }];
   },
 };
 

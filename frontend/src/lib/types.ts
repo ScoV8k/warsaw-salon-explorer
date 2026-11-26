@@ -16,7 +16,7 @@ export interface Salon {
   services: string;
   editorial_summary: string;
   top_reviews: Review[] | string;
-  photos_json: PhotoInfo[] | string;
+  photo_count: number;
   reviews?: Review[];
   lat?: number;
   lng?: number;
@@ -28,12 +28,6 @@ export interface Review {
   text: string;
   publish_time: string;
   language: string;
-}
-
-export interface PhotoInfo {
-  name: string;
-  width: number;
-  height: number;
 }
 
 export interface PaginatedResponse {

@@ -1,11 +1,34 @@
+import json
 import sqlite3
-import math
 from typing import Optional
+
+
+# Everything except raw_json (~19 KB per row), which the API never returns.
+LIST_COLUMNS = (
+    "google_place_id, name, address, search_district, actual_district, phone, "
+    "website, google_maps_url, rating, reviews_count, price_level, primary_type, "
+    "business_status, opening_hours, services, top_reviews, editorial_summary, "
+    "photos_json, lat, lng, fetched_at"
+)
 
 
 class SalonRepository:
     def __init__(self, db_path: str):
         self.db_path = db_path
+        self._migrate()
+
+    def _migrate(self) -> None:
+        conn = self._connect()
+        conn.executescript("""
+            CREATE INDEX IF NOT EXISTS idx_reviews_place ON salon_reviews(google_place_id);
+            CREATE INDEX IF NOT EXISTS idx_salons_district ON salons(actual_district);
+            DROP TABLE IF EXISTS photo_cache;
+        """)
+        columns = {r["name"] for r in conn.execute("PRAGMA table_info(salons)")}
+        if "photos_refreshed_at" not in columns:
+            conn.execute("ALTER TABLE salons ADD COLUMN photos_refreshed_at TEXT")
+            conn.commit()
+        conn.close()
 
     def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.db_path)
@@ -53,7 +76,7 @@ class SalonRepository:
 
         offset = (page - 1) * per_page
         rows = conn.execute(
-            f"SELECT * FROM salons{where_sql} ORDER BY {sort_by} {sort_order} LIMIT ? OFFSET ?",
+            f"SELECT {LIST_COLUMNS} FROM salons{where_sql} ORDER BY {sort_by} {sort_order} LIMIT ? OFFSET ?",
             params + [per_page, offset],
         ).fetchall()
 
@@ -117,13 +140,38 @@ class SalonRepository:
     def get_all_for_map(self) -> list[dict]:
         conn = self._connect()
         rows = conn.execute(
-            """SELECT google_place_id, name, actual_district, rating, reviews_count,
-                      primary_type, lat, lng, photos_json
+            """SELECT google_place_id, name, address, actual_district, rating, reviews_count,
+                      primary_type, services, lat, lng, photos_json
                FROM salons
                WHERE lat IS NOT NULL AND lng IS NOT NULL"""
         ).fetchall()
         conn.close()
         return [dict(r) for r in rows]
+
+    def get_photos(self, place_id: str) -> Optional[tuple[list[dict], Optional[str]]]:
+        """(photo refs, when the backend last refreshed them) or None when the salon
+        doesn't exist. A None timestamp means the refs still come from the scraper."""
+        conn = self._connect()
+        row = conn.execute(
+            "SELECT photos_json, photos_refreshed_at FROM salons WHERE google_place_id = ?", (place_id,)
+        ).fetchone()
+        conn.close()
+        if row is None:
+            return None
+        try:
+            photos = json.loads(row["photos_json"] or "[]")
+        except json.JSONDecodeError:
+            photos = []
+        return (photos if isinstance(photos, list) else []), row["photos_refreshed_at"]
+
+    def update_photos(self, place_id: str, photos: list[dict]) -> None:
+        conn = self._connect()
+        conn.execute(
+            "UPDATE salons SET photos_json = ?, photos_refreshed_at = CURRENT_TIMESTAMP WHERE google_place_id = ?",
+            (json.dumps(photos, ensure_ascii=False), place_id),
+        )
+        conn.commit()
+        conn.close()
 
     UPDATABLE_COLUMNS = {
         "name", "address", "actual_district", "phone", "website",
