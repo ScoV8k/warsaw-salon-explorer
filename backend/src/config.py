@@ -24,3 +24,8 @@ ALLOWED_ORIGINS = [
     for o in os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
     if o.strip()
 ]
+# Production and preview deployments of the Vercel frontend
+# (warsaw-salon-explorer-eta.vercel.app, warsaw-salon-explorer-<hash>-<team>.vercel.app).
+ALLOWED_ORIGIN_REGEX = os.getenv(
+    "ALLOWED_ORIGIN_REGEX", r"https://warsaw-salon-explorer(-[a-z0-9-]+)?\.vercel\.app"
+)

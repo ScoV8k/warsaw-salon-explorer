@@ -193,6 +193,24 @@ class PhotoEndpointTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(self.google.calls, [])
 
 
+class CorsTest(unittest.IsolatedAsyncioTestCase):
+    async def test_vercel_origins_allowed_others_not(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = os.path.join(tmp, "t.db")
+            make_db(db)
+            app = create_app(db_path=db, photo_cache_dir=os.path.join(tmp, "c"), places_api_key="")
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as c:
+                for origin, allowed in [
+                    ("https://warsaw-salon-explorer-eta.vercel.app", True),
+                    ("https://warsaw-salon-explorer-cywajdnub-scovs-projects.vercel.app", True),
+                    ("http://localhost:3000", True),
+                    ("https://evil.example.com", False),
+                    ("https://warsaw-salon-explorer.vercel.app.evil.com", False),
+                ]:
+                    r = await c.get("/api/health", headers={"Origin": origin})
+                    self.assertEqual(r.headers.get("access-control-allow-origin") == origin, allowed, origin)
+
+
 class ApiBudgetTest(unittest.TestCase):
     def test_limit_and_daily_reset(self):
         with tempfile.TemporaryDirectory() as tmp:

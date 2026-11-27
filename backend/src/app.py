@@ -48,6 +48,7 @@ def create_app(
     app.add_middleware(
         CORSMiddleware,
         allow_origins=config.ALLOWED_ORIGINS,
+        allow_origin_regex=config.ALLOWED_ORIGIN_REGEX or None,
         allow_methods=["GET", "PATCH", "OPTIONS"],
         allow_headers=["Content-Type"],
     )
